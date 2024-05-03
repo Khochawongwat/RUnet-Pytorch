@@ -7,9 +7,9 @@ class DSConv2d(nn.Module):
     def __init__(
         self, in_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False
     ):
-        super(nn.Conv2d, self).__init__()
+        super(DSConv2d, self).__init__()
         self.blocks = nn.Sequential(
-            nn.Conv2d(
+            DSConv2d(
                 in_channels,
                 in_channels,
                 stride=stride,
@@ -17,7 +17,7 @@ class DSConv2d(nn.Module):
                 padding=padding,
                 bias=bias,
             ),
-            nn.Conv2d(
+            DSConv2d(
                 in_channels, out_channels, stride=stride, kernel_size=1, bias=bias
             ),
         )
@@ -25,17 +25,16 @@ class DSConv2d(nn.Module):
     def forward(self, x):
         return self.blocks(x)
 
-
 class DecoderBlock(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, padding=1):
         super(DecoderBlock, self).__init__()
         self.block = nn.Sequential(
             nn.BatchNorm2d(in_channels),
-            nn.Conv2d(
+            DSConv2d(
                 in_channels, out_channels, kernel_size=kernel_size, padding=padding
             ),
             nn.LeakyReLU(),
-            nn.Conv2d(
+            DSConv2d(
                 out_channels, out_channels, kernel_size=kernel_size, padding=padding
             ),
             nn.LeakyReLU(),
@@ -44,70 +43,30 @@ class DecoderBlock(nn.Module):
     def forward(self, x):
         return self.block(x)
 
-
-class AttentionGate(nn.Module):
-    def __init__(self, g_channels, x_channels, out_channels):
-        super(AttentionGate, self).__init__()
-
-        self.W_g = nn.Sequential(
-            nn.Conv2d(
-                g_channels, out_channels, kernel_size=1, stride=1, padding=0, bias=True
-            ),
-            nn.BatchNorm2d(out_channels),
-        )
-
-        self.W_x = nn.Sequential(
-            nn.Conv2d(
-                x_channels, out_channels, kernel_size=1, stride=1, padding=0, bias=True
-            ),
-            nn.BatchNorm2d(out_channels),
-        )
-
-        self.psi = nn.Sequential(
-            nn.Conv2d(out_channels, 1, kernel_size=1, stride=1, padding=0, bias=True),
-            nn.BatchNorm2d(1),
-            nn.Sigmoid(),
-        )
-
-        self.skip = nn.Identity()
-
-    def forward(self, g, x):
-        identity = self.skip(x)
-
-        g1 = self.W_g(g)
-        x1 = self.W_x(x)
-        psi = nn.ReLU()(g1 + x1)
-        psi = self.psi(psi)
-        i = identity + (x * psi)
-
-        return i
-
-
 class ResidualBlock(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, padding=1):
         super(ResidualBlock, self).__init__()
 
         self.block = nn.Sequential(
-            nn.Conv2d(
+            DSConv2d(
                 in_channels, out_channels, kernel_size=kernel_size, padding=padding
             ),
             nn.BatchNorm2d(out_channels),
             nn.LeakyReLU(),
-            nn.Conv2d(
+            DSConv2d(
                 out_channels, out_channels, kernel_size=kernel_size, padding=padding
             ),
             nn.BatchNorm2d(out_channels),
         )
 
-        self.skip = nn.Conv2d(in_channels, out_channels, kernel_size=1, padding=0)
+        self.skip = DSConv2d(in_channels, out_channels, kernel_size=1, padding=0)
 
     def forward(self, x):
         identity = self.skip(x)
         return identity + self.block(x)
 
-
 def init_weights(m):
-    if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
+    if isinstance(m, DSConv2d) or isinstance(m, nn.Linear):
         nn.init.xavier_uniform_(m.weight)
         if m.bias is not None:
             nn.init.zeros_(m.bias)
@@ -139,7 +98,7 @@ class RUNet(nn.Module):
         self.encoder = nn.ModuleDict(
             {
                 "1": nn.Sequential(
-                    nn.Conv2d(kernel_size, self.n, 7, padding=3),
+                    DSConv2d(kernel_size, self.n, 7, padding=3),
                     nn.BatchNorm2d(self.n),
                     nn.LeakyReLU(),
                 ),
@@ -170,7 +129,7 @@ class RUNet(nn.Module):
                     nn.LeakyReLU(),
                 ),
                 "6": nn.Sequential(
-                    nn.Conv2d(self.n * 8, self.n * 16, kernel_size, padding=padding),
+                    DSConv2d(self.n * 8, self.n * 16, kernel_size, padding=padding),
                     nn.LeakyReLU(),
                 ),
             }
@@ -179,7 +138,7 @@ class RUNet(nn.Module):
         self.decoder = nn.ModuleDict(
             {
                 "6": nn.Sequential(
-                    nn.Conv2d(self.n * 16, self.n * 8, kernel_size, padding=padding),
+                    DSConv2d(self.n * 16, self.n * 8, kernel_size, padding=padding),
                     nn.LeakyReLU(),
                 ),
                 "5": DecoderBlock(self.n * 16, self.n * 8, kernel_size, padding),
@@ -188,11 +147,11 @@ class RUNet(nn.Module):
                 "2": DecoderBlock(192, 96, kernel_size, padding),
                 "1": nn.Sequential(
                     #nn.Upsample(scale_factor=2, mode='bicubic', align_corners=True),
-                    nn.Conv2d(88, 99, kernel_size, padding=padding),
+                    DSConv2d(88, 99, kernel_size, padding=padding),
                     nn.LeakyReLU(),
-                    nn.Conv2d(99, 99, kernel_size, padding=padding),
+                    DSConv2d(99, 99, kernel_size, padding=padding),
                     nn.LeakyReLU(),
-                    nn.Conv2d(99, kernel_size, 1, padding=0),
+                    DSConv2d(99, kernel_size, 1, padding=0),
                 )
             }
         )
