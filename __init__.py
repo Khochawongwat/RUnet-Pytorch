@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from utils import *
 
 class DSConv2d(nn.Module):
     def __init__(
@@ -170,7 +169,6 @@ class RUNet(nn.Module):
             stack[name] = x
 
         for name, layer in self.decoder.items():
-
             if name == "6":
                 x = layer(x)
                 
@@ -184,5 +182,4 @@ class RUNet(nn.Module):
                 break
 
             x = self.pixelshuffle(x)
-
         return x
