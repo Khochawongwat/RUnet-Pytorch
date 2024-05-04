@@ -8,7 +8,7 @@ class DSConv2d(nn.Module):
     ):
         super(DSConv2d, self).__init__()
         self.blocks = nn.Sequential(
-            DSConv2d(
+            nn.Conv2d(
                 in_channels,
                 in_channels,
                 stride=stride,
@@ -16,7 +16,7 @@ class DSConv2d(nn.Module):
                 padding=padding,
                 bias=bias,
             ),
-            DSConv2d(
+            nn.Conv2d(
                 in_channels, out_channels, stride=stride, kernel_size=1, bias=bias
             ),
         )
